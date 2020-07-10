@@ -1,0 +1,99 @@
+% arara: lualatex: { shell: yes, interaction: nonstopmode, synctex: yes}
+% arara: lualatex: { shell: yes, interaction: nonstopmode, synctex: yes}
+% sarara: lualatex: { shell: yes, action: nonstopmode, synctex: yes}
+% ssarara: lualatex: { shell: yes, action: nonstopmode, synctex: yes}
+% asarara: lualatex: { shell: yes, action: nonstopmode, synctex: yes,  options: "-output-directory=_build"}
+% asarara: lualatex: { shell: yes, action: nonstopmode, synctex: yes,  options: "-output-directory=_build"}
+\documentclass{article}
+\usepackage[ngerman]{babel}
+\usepackage[no-math]{fontspec}
+
+% \directlua{os.execute("cp basic/UbuntuL.ttf UbuntuL.ttf")}
+% \directlua{os.execute("cp basic/UbuntuL.ttf UbuntuL.ttf")}
+% \directlua{os.execute("c  p basic/UbuntuL.ttf UbuntuL.ttf")}
+
+\usepackage{mwe}
+\usepackage{luacode}
+\usepackage{shellesc}
+% \documentclassw[11pt, a4paper,ngerman]{article}
+\usepackage{../../latexBasic/basicff}
+
+
+\usetikzlibrary{patterns} % preamble
+\tcbuselibrary{skins} % preamble
+
+\usepackage{tikz}
+% \usepackage{PTSansNarrow}
+\usetikzlibrary{matrix}
+
+\usepackage{pgfplots}
+\pgfplotsset{
+ compat=newest
+  }
+\tcbset{colframe=red!75!black}
+\newenvironment{proggen}{\begin{center}}{\end{center}}
+
+\usepackage{array}
+% \setmainfont[Path=/Applications/Microsoft Word.app/Contents/Resources/Fonts/]{Calibri.ttf}
+% \setsansfont[Path=/Applications/Microsoft Word.app/Contents/Resources/Fonts/]{Calibri.ttf}
+% \setmonofont[Path=/Applications/Microsoft Word.app/Contents/Resources/Fonts/]{Calibri.ttf}
+
+
+\setmainfont[Numbers=OldStyle, Path=../latexBasic/]{UbuntuL.ttf}
+\setsansfont[BoldFont = Ubuntu-B ,Numbers=OldStyle, Path=../latexBasic/]{UbuntuR.ttf}
+\setmonofont[Numbers=OldStyle, Path=../latexBasic/]{UbuntuMonoR.ttf}
+% \liningnums{\textbf{}}
+% \oldstylenums{\textbf{}}
+
+
+\newcolumntype{C}[1]{>{\centering\arraybackslash}m{#1}}
+
+\oddsidemargin-10mm
+\title{
+\color{white}
+ $\bullet$ \\ $\bullet$ \\ $\bullet$ \\
+ \color{black}
+ % \color{white}
+ % $\bullet$ \\
+ \color{black}
+ \begin{center}
+   GCODEview \\
+   \color{white}
+   $\bullet$ \\
+   \color{black}
+   Formula Mundi
+ \end{center}
+\color{white}
+$\bullet$ \\
+\color{black}
+ \begin{center}
+ % \includegraphics[scale=0.5]{./pictures/CaptainWarschburger.jpg}
+\end{center}
+ % \includegraphics{./pictures/wohnzimmer.png}
+}
+% \includegraphics{./pictures/asrock.png} Q1900M \\ \color{white} $\bullet$ \\ $\bullet$ \\ $\bullet$ \\ \color{black} \\ \apple \\ 10.10.3
+
+\author{Daniel Krah}
+% \date{1.6.2015}
+
+\begin{document}
+% \AddToShipoutPicture{\BackgroundPic}
+\maketitle%
+\newpage%
+ % \tableofcontents%
+% \newpage
+%==================================================================================
+
+% \newpage
+% \sect{Überblick}
+% \section{Überblick}
+
+
+\input{kap1.tex}
+% \input{strukturen.tex}
+% \input{threadsProzesse.tex}
+
+%=========================================================================================================================
+%
+%-------------END
+\end{document}
