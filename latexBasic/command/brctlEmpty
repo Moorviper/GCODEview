@@ -1,0 +1,3 @@
+brctl show
+bridge name	bridge id		STP enabled	interfaces
+tunneldigger		8000.0abeef250001	no	
