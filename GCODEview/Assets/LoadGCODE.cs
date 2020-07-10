@@ -38,7 +38,14 @@ public class LoadGCODE : MonoBehaviour
 
         for (int i = 0; i < lines.Length; i++)
         {
-            Debug.Log(i + " : " + lines[i]);
+            if (lines[i].StartsWith(";") )
+            {
+                if (lines[i].StartsWith(";Dimension"))
+                {
+                    Debug.Log(lines[i]);
+                }
+            }
+            //Debug.Log(i + " : " + lines[i]);
         }
     }
 
