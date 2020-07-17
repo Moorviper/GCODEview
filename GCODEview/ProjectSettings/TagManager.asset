@@ -5,6 +5,7 @@ TagManager:
   serializedVersion: 2
   tags:
   - loadGcode
+  - buildplate
   layers:
   - Default
   - TransparentFX

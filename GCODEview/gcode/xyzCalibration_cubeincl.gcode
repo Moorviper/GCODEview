@@ -1,5 +1,5 @@
 ;Sliced by ideaMaker 3.5.3.4250, 2020-07-01 13:11:56 UTC+0200
-;Dimension: 250.000 210.000 200.000 0.400
+;Dimension: 280.000 210.000 200.000 0.400
 ;Plate Shape: 0
 ;Extruder Offset #1: 25.000 0.000
 ;Filament Diameter #1: 1.750
