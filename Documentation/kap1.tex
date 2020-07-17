@@ -5,6 +5,7 @@
 
 \section{.gcode Parser}
 
+\subsection{Basiswerte}
 
 \monocodebox{sh}{Slicersetting Ideamaker:}{./codesnippets/xyzCalibration_cube.gcode
 }{false}{0}{12}
@@ -16,6 +17,7 @@ Zur Anzeige benötigte Werte:
   \item Plate Shape (Rechteckig / Rund)
 \end{itemize}
 
+\subsection{Startcode}
 \monocodebox{sh}{Druck Startcode}{./codesnippets/xyzCalibration_cube.gcode
 }{false}{13}{27}
 
@@ -23,16 +25,24 @@ Hier werden vereinfacht nur die Temperaturen gesetzt und mit \textbf{G28}die Hom
 
 \newpage
 
-\monocodebox{sh}{Druck Startcode Nozzle Prime}{./codesnippets/xyzCalibration_cube.gcode
+\subsection{Startcode Nozzle prime}
+\monocodebox{sh}{Druck Startcode Nozzle prime}{./codesnippets/xyzCalibration_cube.gcode
 }{false}{26}{35}
 
 Hier wird außerhalb des Druckbereiches Material in die Düse gedrückt.
 Dies ist nötig damit dann beim drucken des Models schon Material am Ausgang der Düse ist.
 
+\subsection{Extruder-Mode}
 \monocodebox{sh}{Extruder-Mode}{./codesnippets/xyzCalibration_cube.gcode
 }{false}{36}{36}
 
-Diese Zeile ist wichtig da sie festlegt wie die nachfolgenden G codes interpretiert werden sollen.
+Diese Zeile ist wichtig da sie festlegt wie die nachfolgenden G codes interpretiert werden sollen.\\
+
+Es gibt verschiedene Arten der Befehle:\\
+
+N: Line number\\
+G0 : Rapid Move\\
+G1 : Linear Move\\
 % \monocodebox{sh}{Speedtest mittels Terminal:}{./codesnippets/speedtest.sh}{false}{0}{9999999}
 
 % \includegraphics[scale=0.5]{./pictures/streamingarten.png}
