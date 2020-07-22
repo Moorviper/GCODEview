@@ -18,7 +18,6 @@ public class LoadGCODE : MonoBehaviour
     FileInfo[] fileInfo = null;
     string[] actualSelectedGcode = null;
     int lastSelection = 0;
-    // Start is called before the first frame update
     string[][] parsedGcode;
     void Start()
     {
