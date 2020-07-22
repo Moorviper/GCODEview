@@ -63,10 +63,6 @@ public class LoadGCODE : MonoBehaviour
     }
     void LoadGcodeFile()
     {
-        // Log gcode file to Log
-        // for testing set selected file to file 1 in the list
-        // GameObject.Find("loadGcode").GetComponent<Dropdown>().value = 1;
-        // arr = new int[2][];
         if (GameObject.Find("loadGcode").GetComponent<Dropdown>().value != 0)
         {
             Dropdown test = GameObject.Find("loadGcode").GetComponent<Dropdown>();
@@ -119,11 +115,11 @@ public class LoadGCODE : MonoBehaviour
                     string[] g0 = actualSelectedGcode[i].Split(' ');
                     // Debug.Log("debug go : " + g0);
                     // Debug.Log("G0 code length " + g0.Length);
-                    String x_temp;
-                    String y_temp;
-                    String z_temp;
-                    String f_temp;
-                    String e_temp;
+                    String x_temp = "";
+                    String y_temp = "";
+                    String z_temp = "";
+                    String f_temp = "";
+                    String e_temp = "";
 
                     for (int l = 0; l < g0.Length; l++)
                     {
@@ -147,8 +143,15 @@ public class LoadGCODE : MonoBehaviour
                             default:
                                 break;
                         }
-                        parsedGcode[i] = new String[] {"G0", x_temp, y_temp, z_temp, f_temp, e_temp };
                     }
+
+                    if (string.IsNullOrEmpty(x_temp)){ x_temp = " ";}
+                    if (y_temp == null){ y_temp = " ";}
+                    if (z_temp == null){ z_temp = " ";}
+                    if (f_temp == null){ f_temp = " ";}
+                    if (e_temp == null){ e_temp = " ";}
+
+                    parsedGcode[i] = new String[] {"G0", x_temp, y_temp, z_temp, f_temp, e_temp };
                 }
                 if (actualSelectedGcode[i].StartsWith("G1"))
                 {
@@ -156,13 +159,13 @@ public class LoadGCODE : MonoBehaviour
                     string[] g1 = actualSelectedGcode[i].Split(' ');
                     // Debug.Log("debug go : " + g0);
                     // Debug.Log("G0 code length " + g0.Length);
-                    String x_temp;
-                    String y_temp;
-                    String z_temp;
-                    String f_temp;
-                    String e_temp;
+                    String x_temp = "";
+                    String y_temp = "";
+                    String z_temp = "";
+                    String f_temp = "";
+                    String e_temp = "";
 
-                    for (int l = 0; l < g0.Length; l++)
+                    for (int l = 0; l < g1.Length; l++)
                     {
                         switch (g1[l][0])
                         {
@@ -179,13 +182,19 @@ public class LoadGCODE : MonoBehaviour
                                 y_temp = g1[l];
                                 break;
                             case 'E':
-                                e_temp = g0[l];
+                                e_temp = g1[l];
                                 break;
                             default:
                                 break;
                         }
-                        parsedGcode[i] = new String[] {"G1", x_temp, y_temp, z_temp, f_temp, e_temp };
                     }
+                    if (x_temp == null){ x_temp = " ";}
+                    if (y_temp == null){ y_temp = " ";}
+                    if (z_temp == null){ z_temp = " ";}
+                    if (f_temp == null){ f_temp = " ";}
+                    if (e_temp == null){ e_temp = " ";}
+
+                    parsedGcode[i] = new String[] {"G1", x_temp, y_temp, z_temp, f_temp, e_temp };
                 }
             }
         }
@@ -203,3 +212,4 @@ public class LoadGCODE : MonoBehaviour
             }
         }
     }
+}
