@@ -6,6 +6,8 @@ TagManager:
   tags:
   - loadGcode
   - buildplate
+  - cylinder
+  - segment
   layers:
   - Default
   - TransparentFX
