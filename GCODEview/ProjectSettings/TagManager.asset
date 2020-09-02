@@ -9,6 +9,7 @@ TagManager:
   - cylinder
   - segment
   - clone
+  - extrusion
   layers:
   - Default
   - TransparentFX
