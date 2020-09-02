@@ -51,7 +51,7 @@ public class LoadGCODE : MonoBehaviour
         if (Time.time > nextActionTime)
         {
             nextActionTime += period;
-            Debug.Log("Parse test: " + float.Parse("X62.229".Replace('.', ',').Substring(1)));
+            // Debug.Log("Parse test: " + float.Parse("X62.229".Replace('.', ',').Substring(1)));
 
             // Debug.Log("read gcode dir :   Last selection: " + lastSelection + "  value selected : " + GameObject.Find("loadGcode").GetComponent<Dropdown>().value);
             ReadGcodeDir();
@@ -107,19 +107,38 @@ public class LoadGCODE : MonoBehaviour
             Debug.Log("[loading] Gcode File");
             Debug.Log("Selected Gcode-file has :" + countGlines() + " g lines.");
 
-            ParseGcode();
+            segment.transform.localScale = new Vector3(0.2f, 1, 0.45f);
 
             lastSelection = GameObject.Find("loadGcode").GetComponent<Dropdown>().value;
+
+           killClones();
+
+            ParseGcode();
+
+
         }
         else
         {
+            killClones();
             GameObject.Find("buildplate").transform.position = new Vector3(1 / 2, -1, 1 / 2);
             GameObject.Find("buildplate").transform.localScale = new Vector3(1, 1, 1);
             GameObject.Find("Main Camera").transform.position = new Vector3(1 / 2, 200, -200);
+            segment.transform.localScale = new Vector3(0.2f, 1, 0.45f);
         }
     }
 
 
+    void killClones()
+    {
+            GameObject[] clones;
+            // clones = GameObject.Find("(Clone)");
+             clones = GameObject.FindGameObjectsWithTag("clone");
+
+            foreach (GameObject clone in clones)
+            {
+                Destroy(clone);
+            }
+    }
     int countGlines()
     {
         int temp = parseCounter = 0;
@@ -186,7 +205,7 @@ public class LoadGCODE : MonoBehaviour
                     // Debug.Log("G0 code length " + g0.Length);
                     String x_temp = "";
                     String y_temp = "";
-                    // String z_temp = "";
+                    String z_temp = "";
                     String f_temp = "";
                     String e_temp = "";
 
@@ -221,7 +240,7 @@ public class LoadGCODE : MonoBehaviour
                     // if (string.IsNullOrEmpty(x_temp)) { x_temp = " "; }
                     if (string.IsNullOrEmpty(x_temp)) { x_temp = lastX; }
                     if (string.IsNullOrEmpty(y_temp)) { y_temp = lastY; }
-                    // if (string.IsNullOrEmpty(z_temp)) { z_temp = lastZ; }
+                    if (string.IsNullOrEmpty(z_temp)) { z_temp = lastZ; }
                     if (string.IsNullOrEmpty(e_temp)) { e_temp = " "; }
                     if (string.IsNullOrEmpty(f_temp)) { f_temp = lastF; }
                     // if (x_temp == null) { x_temp = lastX; }
@@ -250,7 +269,7 @@ public class LoadGCODE : MonoBehaviour
                     // Debug.Log("G0 code length " + g0.Length);
                     String x_temp = "";
                     String y_temp = "";
-                    // String z_temp = "";
+                    String z_temp = "";
                     String f_temp = "";
                     String e_temp = "";
 
@@ -260,18 +279,23 @@ public class LoadGCODE : MonoBehaviour
                         {
                             case 'F':
                                 f_temp = g1[l].Replace('.', ',').Substring(1);
+                                lastF = g1[l].Replace('.', ',').Substring(1);
                                 break;
                             case 'X':
                                 x_temp = g1[l].Replace('.', ',').Substring(1);
+                                lastX = g1[l].Replace('.', ',').Substring(1);
                                 break;
                             case 'Y':
                                 y_temp = g1[l].Replace('.', ',').Substring(1);
+                                lastY = g1[l].Replace('.', ',').Substring(1);
                                 break;
                             case 'Z':
-                                // y_temp = g1[l].Replace('.', ',').Substring(1);
+                                z_temp = g1[l].Replace('.', ',').Substring(1);
+                                lastZ = g1[l].Replace('.', ',').Substring(1);
                                 break;
                             case 'E':
                                 e_temp = g1[l].Replace('.', ',').Substring(1);
+                                lastE = g1[l].Replace('.', ',').Substring(1);
                                 break;
                             default:
                                 break;
@@ -380,19 +404,43 @@ public class LoadGCODE : MonoBehaviour
     {
         // Debug.Log("P1 :" + p1.x + " " + p1.y + " " + p1.z);
         // Debug.Log("P2 :" + p2.x + " " + p2.y + " " + p2.z);
+        Vector3 direction = p2 - p1;
         Vector3 pos = Vector3.Lerp(p2, p1, (float)0.5);
-        Vector3 zero = new Vector3(0, 0, 0);
+        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+        Debug.Log(angle);
+        // float angle1 = Vector3.Angle(p2, p1);
+        // Debug.Log("position " + pos + "Angle " + angle);
+        // Vector3 zero = new Vector3(0, 0, 0);
         GameObject segObj = (GameObject)Instantiate(segment);
+        segObj.tag="clone";
+        segObj.transform.localRotation = Quaternion.Euler(direction.y * (-0.5f), direction.y, +0);
+        float laenge = (Vector3.Distance(p1, p2));
+        // segObj.transform.localRotation = Quaternion.Euler(+0, angle1*100, +0);
+        // laenge = laenge + 0.04f;
+        segObj.transform.localScale = new Vector3(extrusionHeight, ((laenge / 2) + 0.05f), extrusionWidth);
+
+
+
+        // new Vector3(direction.y*(-0.5f), direction.y , +0);
+        // segObj.transform.localRotation = new Vector3(direction.y*(-0.5f), direction.y , +0);
         segObj.transform.position = pos;
         segObj.transform.up = p2 - p1;
-        float laenge = (Vector3.Distance(p1, p2));
-        Debug.Log("laenge segemet: " + laenge);
+
+        segObj.transform.up = p2 - p1;
+
+
+
+
+
+        // Debug.Log("laenge segemet: " + laenge);
 
         // segObj.transform.localScale = new Vector3(1,(1.0f*laenge/2f) , 1);
-        segObj.transform.localScale = new Vector3(extrusionWidth, laenge / 2, extrusionHeight);
 
-        segObj.transform.position = zero;
-        segObj.transform.position = pos;
+        // segObj.transform.localRotation = Quaternion.Euler(+0, angle1*1000/4, +0);
+
+        // segObj.transform.position = zero;
+        // segObj.transform.position = pos;
+        // segObj.transform.up = p2 - p1;
         // Debug.Log("pos.x :" + pos.x);
         // Debug.Log("pos.y :" + pos.y);
         // Debug.Log("pos.z :" + pos.z);
@@ -406,19 +454,30 @@ public class LoadGCODE : MonoBehaviour
 
     void create_mesh()
     {
-        for (int i = 7; i < countGlines() - 20; i++)
+        for (int i = 1; i < countGlines() - 1; i++)
         {
-            Vector3 temp1 = new Vector3(float.Parse(parsedGcode[i - 1][1]),
-            // 0.3f,
+            // Debug.Log(temp2);
+            if (parsedGcode[i][0].StartsWith("G0"))
+            {
+                Debug.Log("ignoring G0");
+            }
+            else
+            {
+
+                Vector3 temp1 = new Vector3(float.Parse(parsedGcode[i - 1][1]),
+             // 0.3f,
              float.Parse(parsedGcode[i - 1][3]),
              float.Parse(parsedGcode[i - 1][2]));
-            // Debug.Log(temp1);
-            Vector3 temp2 = new Vector3(float.Parse(parsedGcode[i][1]),
-            // 0.3f,
-            float.Parse(parsedGcode[i][3]),
-            float.Parse(parsedGcode[i][2]));
-            // Debug.Log(temp2);
-            create_segment(temp2, temp1, 0.45f, actualLayerHeight);
+                // Debug.Log(temp1);
+                Vector3 temp2 = new Vector3(float.Parse(parsedGcode[i][1]),
+                // 0.3f,
+                float.Parse(parsedGcode[i][3]),
+                float.Parse(parsedGcode[i][2]));
+                create_segment(temp2, temp1, 0.45f, 0.45f);
+                // create_segment(temp2, temp1, 0.45f, actualLayerHeight);
+
+                // actualLayerHeight);
+            }
         }
     }
 }
