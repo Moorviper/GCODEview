@@ -8,6 +8,7 @@ TagManager:
   - buildplate
   - cylinder
   - segment
+  - clone
   layers:
   - Default
   - TransparentFX
