@@ -4,9 +4,18 @@ using UnityEngine;
 using UnityEngine.UI;
 using System;
 using System.IO;
+using SplineMesh;
+// using SplineMeshTiling;
+// using SplineNode;
+
 
 public class LoadGCODE : MonoBehaviour
 {
+    bool debugPrints = false;
+
+    Slider visibleLayers;
+
+
     private float nextActionTime = 0.0f;
     public float period = 5.0f;
     string gcodeDir = @"gcode";
@@ -14,36 +23,60 @@ public class LoadGCODE : MonoBehaviour
     float bedX = 0;
     float bedY = 0;
     float bedZ = 0;
-    // float actualZheight = 0;
+
+    int slicerGcode = 0;
 
     DirectoryInfo directoryInfo = null;
     // FileInfo[] fileInfo = null;
     string[] actualSelectedGcode = null;
     int lastSelection = 0;
     string[][] parsedGcode;
+
     int parseCounter = 0;
     int actualGCODElines = 0;
-    GameObject segment;
-    String adebugtext = "";
-    String lastF;
-    String lastX;
-    String lastY;
-    String lastZ;
-    String lastE;
 
+
+    GameObject segment;
+    // GameObject meshtest;
+    GameObject go;
+    String adebugtext = "";
+
+    bool isPrinting = false;
+
+
+
+    float scale = 10f;
     float actualZheight = 0f;
     float actualLayerHeight = 0f;
-    float actualExtrusionWidth = 0f;
+    // float actualExtrusionWidth = 0f;
+    // Spline spline;
+    // SplineMeshTiling smt;
+    // SplineExtrusion splineExtrusion;
+    // Material shinyOrange;
+    // Material newMat;
+
+    Material Skirt;
+    Material OuterShell;
+    Material InnerShell;
+    Material SolidInfill;
+    Material Infill;
 
 
     void Start()
     {
-        // string assetPath = Application.streamingAssetsPath;
+        Skirt = Resources.Load<Material>("Skirt");
+        OuterShell = Resources.Load<Material>("OuterShell");
+        InnerShell = Resources.Load<Material>("InnerShell");
+        SolidInfill = Resources.Load<Material>("SolidInfill");
+        Infill = Resources.Load<Material>("Infill");
 
-        // bool isWebGl = assetPath.Contains("://") ||
-        //                  assetPath.Contains(":///");
-        segment = GameObject.Find("Cylinder");
+        GameObject temp = GameObject.Find("Slider");
 
+        Debug.Log(temp.GetComponent<Slider>().value);
+
+        visibleLayers = temp.GetComponent<Slider>();
+
+        visibleLayers.onValueChanged.AddListener(delegate { ValueChangeCheck(); });
 
     }
     void Update()
@@ -63,6 +96,16 @@ public class LoadGCODE : MonoBehaviour
 
     }
 
+    public void ValueChangeCheck()
+    {
+        if (debugPrints)
+        {
+            Debug.Log("Visible Layers :" + visibleLayers.value);
+        }
+        
+        ParseGcode();
+    }
+
     void ReadGcodeDir()
     {
 
@@ -74,7 +117,12 @@ public class LoadGCODE : MonoBehaviour
         directoryInfo = new DirectoryInfo(gcodeDir);
         FileInfo[] fileInfo = directoryInfo.GetFiles("*.*", SearchOption.AllDirectories);
 
-        Debug.Log("[update] file tree");
+
+        if (debugPrints)
+        {
+            Debug.Log("[update] file tree");
+        }
+
 
         foreach (FileInfo file in fileInfo)
         {
@@ -100,18 +148,26 @@ public class LoadGCODE : MonoBehaviour
 
             parsedGcode = null;
             // Array.Resize(ref parsedGcode, actualSelectedGcode.Length);
-            Array.Resize(ref parsedGcode, countGlines());
+            // Array.Resize(ref parsedGcode, countGlines());
+
+
 
 
             // Debug.Log("GCODE Lines: " + actualSelectedGcode.Length);
-            Debug.Log("[loading] Gcode File");
-            Debug.Log("Selected Gcode-file has :" + countGlines() + " g lines.");
+            if (debugPrints)
+            {
+                Debug.Log("[loading] Gcode File");
+            }
 
-            segment.transform.localScale = new Vector3(0.2f, 1, 0.45f);
+            // Debug.Log("Selected Gcode-file has :" + countGlines() + " g lines.");
+
+            // segment.transform.localScale = new Vector3(0.2f, 1, 0.45f);
 
             lastSelection = GameObject.Find("loadGcode").GetComponent<Dropdown>().value;
-
-           killClones();
+            killExtrusions();
+            // killClones();
+            // Destroy(meshtest);
+            // Destroy(go);
 
             ParseGcode();
 
@@ -119,7 +175,10 @@ public class LoadGCODE : MonoBehaviour
         }
         else
         {
-            killClones();
+            isPrinting = false;
+            killExtrusions();
+            // Destroy(meshtest);
+            // Destroy(go);
             GameObject.Find("buildplate").transform.position = new Vector3(1 / 2, -1, 1 / 2);
             GameObject.Find("buildplate").transform.localScale = new Vector3(1, 1, 1);
             GameObject.Find("Main Camera").transform.position = new Vector3(1 / 2, 200, -200);
@@ -127,35 +186,53 @@ public class LoadGCODE : MonoBehaviour
         }
     }
 
-
-    void killClones()
+    void killExtrusions()
     {
-            GameObject[] clones;
-            // clones = GameObject.Find("(Clone)");
-             clones = GameObject.FindGameObjectsWithTag("clone");
+        GameObject[] clones;
+        // clones = GameObject.Find("(Clone)");
+        clones = GameObject.FindGameObjectsWithTag("extrusion");
 
-            foreach (GameObject clone in clones)
-            {
-                Destroy(clone);
-            }
+        foreach (GameObject clone in clones)
+        {
+            Destroy(clone);
+        }
     }
     int countGlines()
     {
+        //Debug.Log("ACTUAL SELECTED GCODE :   " + actualSelectedGcode.Length);
+
         int temp = parseCounter = 0;
         for (int i = 0; i < actualSelectedGcode.Length; i++)
         {
-            if (actualSelectedGcode[i].StartsWith("G")) { temp += 1; }
+            if (actualSelectedGcode[i].StartsWith("G0")) { temp += 1; }
+            if (actualSelectedGcode[i].StartsWith("G1")) { temp += 1; }
+
         }
         return temp;
     }
 
     void ParseGcode()
     {
-        parseCounter = 0;
+        killExtrusions();
+        // extrusionlines = null;
+        // Array.Resize(ref extrusionlines, 1000); // 1000 should Unity anyway crashes long before because it is crap.
+
         for (int i = 0; i < actualSelectedGcode.Length; i++)
         {
+            // misc stuff
             if (actualSelectedGcode[i].StartsWith(";"))
             {
+                if (actualSelectedGcode[i].StartsWith(";Sliced"))
+                {
+                    string[] slicerVersion = actualSelectedGcode[i].Split(' ');
+                    if (debugPrints)
+                    {
+                        Debug.Log("SLICER: " + slicerVersion[2] + " " + slicerVersion[3]);
+                    }
+
+                    slicerGcode = 1;
+
+                }
                 if (actualSelectedGcode[i].StartsWith(";Dimension"))
                 {
                     string[] dimensions = actualSelectedGcode[i].Split(' ');
@@ -164,12 +241,11 @@ public class LoadGCODE : MonoBehaviour
                     bedZ = float.Parse(dimensions[3].Replace('.', ','));
                     nozzleDiameter = float.Parse(dimensions[4].Replace('.', ','));
 
-                    Debug.Log(bedX + " " + bedY + " " + bedZ + " " + nozzleDiameter);
-
-
-
                     SetBuildplate(bedX, bedY);
-                    Debug.Log(actualSelectedGcode[i]);
+                    if (debugPrints)
+                    {
+                        Debug.Log(actualSelectedGcode[i]);
+                    }
 
                 }
                 // actual tool position height
@@ -177,6 +253,11 @@ public class LoadGCODE : MonoBehaviour
                 {
                     string[] temp = actualSelectedGcode[i].Split(':');
                     actualZheight = float.Parse(temp[1].Replace('.', ','));
+                    if (debugPrints)
+                    {
+                        Debug.Log("GECODE Z HEIGT ACTUAL " + actualZheight);
+                    }
+
 
                 }
                 // layer Height
@@ -186,298 +267,671 @@ public class LoadGCODE : MonoBehaviour
                     actualLayerHeight = float.Parse(temp[1].Replace('.', ','));
 
                 }
+                if (actualSelectedGcode[i].StartsWith(";LAYER:0"))
+                {
+                    isPrinting = true;
+                }
+                if (actualSelectedGcode[i].StartsWith(";End"))
+                {
+                    isPrinting = false;
+                }
+                if (debugPrints)
+                {
+                    if (actualSelectedGcode[i].StartsWith(";TYPE")) // write all feature in file
+                    {
+                        adebugtext += actualSelectedGcode[i] + "\n";
+                        System.IO.File.WriteAllText("clean.txt", adebugtext);
+                    }
+                }
+
             }
 
 
-
-            // Debug.Log(i + " : " + actualSelectedGcode[i]);
-            if (actualSelectedGcode[i].StartsWith("G"))
+            // Soported feature types
+            // ; TYPE: WALL - INNER
+            // ; TYPE: WALL - OUTER
+            // ; TYPE: SOLID - FILL
+            // ; TYPE: SKIRT
+            // ; TYPE: FILL
+            if (actualSelectedGcode[i].StartsWith(";TYPE:SKIRT"))
             {
+                GameObject meshtest = new GameObject();
+                meshtest.tag = "extrusion";
+                meshtest.name = actualSelectedGcode[i];
 
-                // Array.Resize(ref parsedGcode, parsedGcode.Length+1);
-                parsedGcode[parseCounter] = new string[6];
+                meshtest.AddComponent<Spline>();
+                meshtest.AddComponent<SplineMeshTiling>();
 
-                if (actualSelectedGcode[i].StartsWith("G0"))
+               
+
+
+
+                Spline spline = meshtest.GetComponent<Spline>();
+                spline.tag = "extrusion";
+                SplineMeshTiling smt = meshtest.GetComponent<SplineMeshTiling>();
+                smt.tag = "extrusion";
+
+                smt.updateInPlayMode = true;
+
+                go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                go.name = "Filament: " + actualSelectedGcode[i];
+                go.tag = "extrusion";
+
+                Mesh mesh = go.GetComponent<MeshFilter>().sharedMesh;
+                smt.mesh = mesh; // test
+                // Debug.Log(Skirt + "     - materials");
+                // Debug.Log(smt.material + " -- -- --");
+                smt.material = Skirt;
+                // Debug.Log(smt.material + " -- -- --");
+                smt.rotation = new Vector3(0.0f, 0.0f, 0.0f);
+                smt.scale = new Vector3(0.2f * scale, 0.2f * scale, 0.45f * scale);
+
+                 if (visibleLayers.value >= (actualZheight * scale))
                 {
-                    // Debug.Log("code length " + actualSelectedGcode[i].Length);
-                    string[] g0 = actualSelectedGcode[i].Split(' ');
-                    // Debug.Log("debug go : " + g0);
-                    // Debug.Log("G0 code length " + g0.Length);
-                    String x_temp = "";
-                    String y_temp = "";
-                    String z_temp = "";
-                    String f_temp = "";
-                    String e_temp = "";
+                    meshtest.SetActive(true);
+                    go.SetActive(true);
 
-                    for (int l = 0; l < g0.Length; l++)
-                    {
-                        switch (g0[l][0])
-                        {
-                            case 'F':
-                                f_temp = g0[l].Replace('.', ',').Substring(1);
-                                lastF = g0[l].Replace('.', ',').Substring(1);
-                                break;
-                            case 'X':
-                                x_temp = g0[l].Replace('.', ',').Substring(1);
-                                lastX = g0[l].Replace('.', ',').Substring(1);
-                                break;
-                            case 'Y':
-                                y_temp = g0[l].Replace('.', ',').Substring(1);
-                                lastY = g0[l].Replace('.', ',').Substring(1);
-                                break;
-                            case 'Z':
-                                z_temp = g0[l].Replace('.', ',').Substring(1);
-                                lastZ = g0[l].Replace('.', ',').Substring(1);
-                                break;
-                            case 'E':
-                                e_temp = g0[l].Replace('.', ',').Substring(1);
-                                break;
-                            default:
-                                break;
-                        }
-                    }
-
-                    // if (string.IsNullOrEmpty(x_temp)) { x_temp = " "; }
-                    if (string.IsNullOrEmpty(x_temp)) { x_temp = lastX; }
-                    if (string.IsNullOrEmpty(y_temp)) { y_temp = lastY; }
-                    if (string.IsNullOrEmpty(z_temp)) { z_temp = lastZ; }
-                    if (string.IsNullOrEmpty(e_temp)) { e_temp = " "; }
-                    if (string.IsNullOrEmpty(f_temp)) { f_temp = lastF; }
-                    // if (x_temp == null) { x_temp = lastX; }
-                    // if (y_temp == null) { y_temp = lastY; }
-                    // if (z_temp == null) { z_temp = lastZ; }
-                    // if (f_temp == null) { f_temp = lastF; }
-                    // if (e_temp == null) { e_temp = " "; }
-
-                    // Debug.Log("NEW " + x_temp + " : " + y_temp + " : " + z_temp + " : " + f_temp + " : " + e_temp);
-                    // Debug.Log("old--- " + lastX + " : " + lastY + " : " + lastZ + " : " + lastF + " : " + lastE);
-
-
-
-                    parsedGcode[parseCounter] = new String[] { "G0", x_temp, y_temp, z_temp, f_temp, e_temp };
-
-                    // Debug.Log("G0" + " x: " + x_temp + " y: " +  y_temp + " z: " +  z_temp + " f: " +  f_temp + " e: " +  e_temp);
-                    adebugtext += parsedGcode[parseCounter][0] + " : " + parsedGcode[parseCounter][1] + " : " + parsedGcode[parseCounter][2] + " : " + parsedGcode[parseCounter][3] + " : " + parsedGcode[parseCounter][4] + " : " + parsedGcode[parseCounter][5] + "\n";
-                    // System.IO.File.WriteAllText("filename.txt", string.Join("\n", parsedGcode[i][0] , " : " + parsedGcode[i][1] , " : " , parsedGcode[i][2] , " : " , parsedGcode[i][3] , " : " , parsedGcode[i][4] , " : " , parsedGcode[i][5] , " : "));
-                    parseCounter += 1;
                 }
-                if (actualSelectedGcode[i].StartsWith("G1"))
+                else
                 {
-                    // Debug.Log("code length " + actualSelectedGcode[i].Length);
-                    string[] g1 = actualSelectedGcode[i].Split(' ');
-                    // Debug.Log("debug go : " + g0);
-                    // Debug.Log("G0 code length " + g0.Length);
-                    String x_temp = "";
-                    String y_temp = "";
-                    String z_temp = "";
-                    String f_temp = "";
-                    String e_temp = "";
+                    meshtest.SetActive(false);
+                    go.SetActive(false);
 
-                    for (int l = 0; l < g1.Length; l++)
+                }
+
+
+                string[] before = actualSelectedGcode[(i - 2)].Split(' ');
+                float xx;
+                float yy;
+                xx = float.Parse(before[2].Replace('.', ',').Substring(1));
+                yy = float.Parse(before[3].Replace('.', ',').Substring(1));
+
+                if (debugPrints)
+                {
+                    Debug.Log("X :" + xx + "   Y: " + yy);
+                }
+
+                spline.AddNode(new SplineNode(new Vector3(xx * scale, (actualZheight - (actualLayerHeight / 2)) * scale, yy * scale), new Vector3(xx * scale - 0.000001f, (actualZheight - (actualLayerHeight / 2)) * scale, yy * scale - 0.000001f)));
+                // spline.AddNode(new SplineNode(new Vector3(x * scale, (actualZheight - (actualLayerHeight / 2)) * scale, y * scale), new Vector3(x * scale - 0.000001f, (actualZheight - (actualLayerHeight / 2)) * scale, y * scale - 0.000001f)));
+
+                if (debugPrints)
+                {
+                    Debug.Log("Aktuelle Zeile : " + actualSelectedGcode[i] + "  " + i);
+                }
+
+                int n = 1;
+                while ((i + n) < actualSelectedGcode.Length)
+                {
+                    if (actualSelectedGcode[i + n].StartsWith(";LAYER")) { break; }
+                    if (actualSelectedGcode[i + n].StartsWith(";End GCode")) { break; }
+                    if (actualSelectedGcode[i + n].StartsWith(";TYPE"))
                     {
-                        switch (g1[l][0])
+                        if (debugPrints)
                         {
-                            case 'F':
-                                f_temp = g1[l].Replace('.', ',').Substring(1);
-                                lastF = g1[l].Replace('.', ',').Substring(1);
-                                break;
-                            case 'X':
-                                x_temp = g1[l].Replace('.', ',').Substring(1);
-                                lastX = g1[l].Replace('.', ',').Substring(1);
-                                break;
-                            case 'Y':
-                                y_temp = g1[l].Replace('.', ',').Substring(1);
-                                lastY = g1[l].Replace('.', ',').Substring(1);
-                                break;
-                            case 'Z':
-                                z_temp = g1[l].Replace('.', ',').Substring(1);
-                                lastZ = g1[l].Replace('.', ',').Substring(1);
-                                break;
-                            case 'E':
-                                e_temp = g1[l].Replace('.', ',').Substring(1);
-                                lastE = g1[l].Replace('.', ',').Substring(1);
-                                break;
-                            default:
-                                break;
+                            Debug.Log("I: " + i + " n: " + n + "Aktuelle Zeile : " + i + "   " + actualSelectedGcode[i]);
                         }
+
+                        break;
                     }
-
-                    // if (string.IsNullOrEmpty(x_temp)) { x_temp = " "; }
-
-                    // if (x_temp == null) { x_temp = lastX; }
-                    // if (y_temp == null) { y_temp = lastY; }
-                    // if (z_temp == null) { z_temp = lastZ; }
-                    // if (f_temp == null) { f_temp = lastF; }
-                    // if (e_temp == null) { e_temp = " "; }
-
-                    // Debug.Log("NEW " + x_temp + " : " + y_temp + " : " + z_temp + " : " + f_temp + " : " + e_temp);
-                    // Debug.Log("old--- " + lastX + " : " + lastY + " : " + lastZ + " : " + lastF + " : " + lastE);
-
-                    // if (x_temp == null) { x_temp = " "; }
-                    // if (y_temp == null) { y_temp = " "; }
-                    // if (z_temp == null) { z_temp = " "; }
-                    // if (f_temp == null) { f_temp = " "; }
-                    // if (e_temp == null) { e_temp = " "; }
-
-
-                    if (e_temp.StartsWith("-") || (string.IsNullOrEmpty(x_temp) && string.IsNullOrEmpty(y_temp)))
+                    if (actualSelectedGcode[i + n].StartsWith("G1")) // extrusion moves
                     {
+                        if (debugPrints)
+                        {
+                            Debug.Log("G1 ------------------------- ");
+                        }
 
+
+                        float posX;
+                        float posY;
+
+                        string[] cords = actualSelectedGcode[i + n].Split(' ');
+
+
+                        if (cords[1].StartsWith("F"))
+                        {
+                            posX = float.Parse(cords[2].Replace('.', ',').Substring(1));
+                            posY = float.Parse(cords[3].Replace('.', ',').Substring(1));
+                        }
+                        else
+                        {
+                            posX = float.Parse(cords[1].Replace('.', ',').Substring(1));
+                            posY = float.Parse(cords[2].Replace('.', ',').Substring(1));
+                        }
+                        spline.AddNode(new SplineNode(new Vector3(posX * scale, (actualZheight - (actualLayerHeight / 2)) * scale, posY * scale), new Vector3(posX * scale - 0.000001f, (actualZheight - (actualLayerHeight / 2)) * scale, posY * scale - 0.000001f)));
                     }
-                    else
-                    {
-                        if (string.IsNullOrEmpty(x_temp)) { x_temp = lastX; }
-                        if (string.IsNullOrEmpty(y_temp)) { y_temp = lastY; }
-                        if (string.IsNullOrEmpty(z_temp)) { z_temp = lastZ; }
-                        if (string.IsNullOrEmpty(e_temp)) { e_temp = " "; }
-                        if (string.IsNullOrEmpty(f_temp)) { f_temp = lastF; }
-
-
-
-                        parsedGcode[parseCounter] = new String[] { "G1", x_temp, y_temp, z_temp, f_temp, e_temp };
-
-                        adebugtext += parsedGcode[parseCounter][0] + " : " + parsedGcode[parseCounter][1] + " : " + parsedGcode[parseCounter][2] + " : " + parsedGcode[parseCounter][3] + " : " + parsedGcode[parseCounter][4] + " : " + parsedGcode[parseCounter][5] + "\n";
-                        // System.IO.File.WriteAllText("file
-                        // System.IO.File.WriteAllText("filename.txt", string.Join("\n", parsedGcode[i][0] + " : " + parsedGcode[i][1] + " : " + parsedGcode[i][2] + " : " + parsedGcode[i][3] + " : " + parsedGcode[i][4] + " : " + parsedGcode[i][5] + " : "), bool True);
-                        parseCounter += 1;
-                    }
-
-
+                    n++;
                 }
             }
+
+            // --------------------------------------------------------------------------------------
+
+            if (actualSelectedGcode[i].StartsWith(";TYPE:WALL-OUTER"))
+            {
+                GameObject meshtest = new GameObject();
+                meshtest.tag = "extrusion";
+                meshtest.name = actualSelectedGcode[i];
+
+                meshtest.AddComponent<Spline>();
+                meshtest.AddComponent<SplineMeshTiling>();
+
+
+                Spline spline = meshtest.GetComponent<Spline>();
+                SplineMeshTiling smt = meshtest.GetComponent<SplineMeshTiling>();
+
+                spline.tag = "extrusion";
+                smt.tag = "extrusion";
+
+                smt.updateInPlayMode = true;
+
+                go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                go.name = "Filament: " + actualSelectedGcode[i];
+                go.tag = "extrusion";
+
+                Mesh mesh = go.GetComponent<MeshFilter>().sharedMesh;
+                smt.mesh = mesh; // test
+                // Debug.Log(Skirt + "     - materials");
+                // Debug.Log(smt.material + " -- -- --");
+                smt.material = OuterShell;
+                // Debug.Log(smt.material + " -- -- --");
+                smt.rotation = new Vector3(0.0f, 0.0f, 0.0f);
+                smt.scale = new Vector3(0.19f * scale, 0.2f * scale, 0.4f * scale);
+
+                 if (visibleLayers.value >= (actualZheight * scale))
+                {
+                    meshtest.SetActive(true);
+                    go.SetActive(true);
+
+                }
+                else
+                {
+                    meshtest.SetActive(false);
+                    go.SetActive(false);
+
+                }
+
+                string[] before = actualSelectedGcode[(i - 1)].Split(' ');
+                float xx;
+                float yy;
+                if (before[1].StartsWith("F"))
+                {
+                    xx = float.Parse(before[2].Replace('.', ',').Substring(1));
+                    yy = float.Parse(before[3].Replace('.', ',').Substring(1));
+                }
+                else
+                {
+                    xx = float.Parse(before[1].Replace('.', ',').Substring(1));
+                    yy = float.Parse(before[2].Replace('.', ',').Substring(1));
+                }
+
+                if (debugPrints)
+                {
+                    Debug.Log("X :" + xx + "   Y: " + yy);
+                }
+
+                spline.AddNode(new SplineNode(new Vector3(xx * scale, (actualZheight - (actualLayerHeight / 2)) * scale, yy * scale), new Vector3(xx * scale - 0.000001f, (actualZheight - (actualLayerHeight / 2)) * scale, yy * scale - 0.000001f)));
+                // spline.AddNode(new SplineNode(new Vector3(x * scale, (actualZheight - (actualLayerHeight / 2)) * scale, y * scale), new Vector3(x * scale - 0.000001f, (actualZheight - (actualLayerHeight / 2)) * scale, y * scale - 0.000001f)));
+
+                if (debugPrints)
+                {
+                    Debug.Log("Aktuelle Zeile : " + actualSelectedGcode[i] + "  " + i);
+                }
+
+                int n = 1;
+                while ((i + n) < actualSelectedGcode.Length)
+                {
+                    if (actualSelectedGcode[i + n].StartsWith(";LAYER")) { break; }
+                    if (actualSelectedGcode[i + n].StartsWith(";End GCode")) { break; }
+                    if (actualSelectedGcode[i + n].StartsWith(";TYPE"))
+                    {
+                        if (debugPrints)
+                        {
+                            Debug.Log("I: " + i + " n: " + n + "Aktuelle Zeile : " + i + "   " + actualSelectedGcode[i]);
+                        }
+
+                        break;
+                    }
+                    if (actualSelectedGcode[i + n].StartsWith("G1")) // extrusion moves
+                    {
+                        if (debugPrints)
+                        {
+                            Debug.Log("G1 ------------------------- ");
+                        }
+
+
+                        float posX;
+                        float posY;
+
+                        string[] cords = actualSelectedGcode[i + n].Split(' ');
+
+
+                        if (cords[1].StartsWith("F"))
+                        {
+                            posX = float.Parse(cords[2].Replace('.', ',').Substring(1));
+                            posY = float.Parse(cords[3].Replace('.', ',').Substring(1));
+                        }
+                        else
+                        {
+                            posX = float.Parse(cords[1].Replace('.', ',').Substring(1));
+                            posY = float.Parse(cords[2].Replace('.', ',').Substring(1));
+                        }
+                        spline.AddNode(new SplineNode(new Vector3(posX * scale, (actualZheight - (actualLayerHeight / 2)) * scale, posY * scale), new Vector3(posX * scale - 0.000001f, (actualZheight - (actualLayerHeight / 2)) * scale, posY * scale - 0.000001f)));
+                    }
+                    n++;
+                }
+            }
+
+            // -----------------------------------------------
+
+            if (actualSelectedGcode[i].StartsWith(";TYPE:WALL-INNER"))
+            {
+                GameObject meshtest = new GameObject();
+                meshtest.tag = "extrusion";
+                meshtest.name = actualSelectedGcode[i];
+
+                meshtest.AddComponent<Spline>();
+                meshtest.AddComponent<SplineMeshTiling>();
+
+
+                Spline spline = meshtest.GetComponent<Spline>();
+                SplineMeshTiling smt = meshtest.GetComponent<SplineMeshTiling>();
+
+                spline.tag = "extrusion";
+                smt.tag = "extrusion";
+
+                smt.updateInPlayMode = true;
+
+                go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                go.name = "Filament: " + actualSelectedGcode[i];
+                go.tag = "extrusion";
+
+                Mesh mesh = go.GetComponent<MeshFilter>().sharedMesh;
+                smt.mesh = mesh; // test
+                // Debug.Log(Skirt + "     - materials");
+                // Debug.Log(smt.material + " -- -- --");
+                smt.material = InnerShell;
+                // Debug.Log(smt.material + " -- -- --");
+                smt.rotation = new Vector3(0.0f, 0.0f, 0.0f);
+                smt.scale = new Vector3(0.19f * scale, 0.2f * scale, 0.4f * scale);
+
+                 if (visibleLayers.value >= (actualZheight * scale))
+                {
+                    meshtest.SetActive(true);
+                    go.SetActive(true);
+
+                }
+                else
+                {
+                    meshtest.SetActive(false);
+                    go.SetActive(false);
+
+                }
+
+                string[] before = actualSelectedGcode[(i - 1)].Split(' ');
+                float xx;
+                float yy;
+                if (before[1].StartsWith("F"))
+                {
+                    xx = float.Parse(before[2].Replace('.', ',').Substring(1));
+                    yy = float.Parse(before[3].Replace('.', ',').Substring(1));
+                }
+                else
+                {
+                    xx = float.Parse(before[1].Replace('.', ',').Substring(1));
+                    yy = float.Parse(before[2].Replace('.', ',').Substring(1));
+                }
+
+                if (debugPrints)
+                {
+                    Debug.Log("X :" + xx + "   Y: " + yy);
+                }
+
+                spline.AddNode(new SplineNode(new Vector3(xx * scale, (actualZheight - (actualLayerHeight / 2)) * scale, yy * scale), new Vector3(xx * scale - 0.000001f, (actualZheight - (actualLayerHeight / 2)) * scale, yy * scale - 0.000001f)));
+                // spline.AddNode(new SplineNode(new Vector3(x * scale, (actualZheight - (actualLayerHeight / 2)) * scale, y * scale), new Vector3(x * scale - 0.000001f, (actualZheight - (actualLayerHeight / 2)) * scale, y * scale - 0.000001f)));
+
+                if (debugPrints)
+                {
+                    Debug.Log("Aktuelle Zeile : " + actualSelectedGcode[i] + "  " + i);
+                }
+
+                int n = 1;
+                while ((i + n) < actualSelectedGcode.Length)
+                {
+                    if (actualSelectedGcode[i + n].StartsWith(";LAYER")) { break; }
+                    if (actualSelectedGcode[i + n].StartsWith(";End GCode")) { break; }
+                    if (actualSelectedGcode[i + n].StartsWith(";TYPE"))
+                    {
+                        if (debugPrints)
+                        {
+                            Debug.Log("I: " + i + " n: " + n + "Aktuelle Zeile : " + i + "   " + actualSelectedGcode[i]);
+                        }
+
+                        break;
+                    }
+                    if (actualSelectedGcode[i + n].StartsWith("G1")) // extrusion moves
+                    {
+                        if (debugPrints)
+                        {
+                            Debug.Log("G1 ------------------------- ");
+                        }
+
+
+                        float posX;
+                        float posY;
+
+                        string[] cords = actualSelectedGcode[i + n].Split(' ');
+
+
+                        if (cords[1].StartsWith("F"))
+                        {
+                            posX = float.Parse(cords[2].Replace('.', ',').Substring(1));
+                            posY = float.Parse(cords[3].Replace('.', ',').Substring(1));
+                        }
+                        else
+                        {
+                            posX = float.Parse(cords[1].Replace('.', ',').Substring(1));
+                            posY = float.Parse(cords[2].Replace('.', ',').Substring(1));
+                        }
+                        spline.AddNode(new SplineNode(new Vector3(posX * scale, (actualZheight - (actualLayerHeight / 2)) * scale, posY * scale), new Vector3(posX * scale - 0.000001f, (actualZheight - (actualLayerHeight / 2)) * scale, posY * scale - 0.000001f)));
+                    }
+                    n++;
+                }
+            }
+
+            // -----------------------------------------------
+
+            if (actualSelectedGcode[i].StartsWith(";TYPE:SOLID-FILL"))
+            {
+                GameObject meshtest = new GameObject();
+                meshtest.tag = "extrusion";
+                meshtest.name = actualSelectedGcode[i];
+
+                meshtest.AddComponent<Spline>();
+                meshtest.AddComponent<SplineMeshTiling>();
+
+
+                Spline spline = meshtest.GetComponent<Spline>();
+                SplineMeshTiling smt = meshtest.GetComponent<SplineMeshTiling>();
+
+                spline.tag = "extrusion";
+                smt.tag = "extrusion";
+
+                smt.updateInPlayMode = true;
+                smt.curveSpace = true;
+
+                go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                go.name = "Filament: " + actualSelectedGcode[i];
+                go.tag = "extrusion";
+
+                Mesh mesh = go.GetComponent<MeshFilter>().sharedMesh;
+                smt.mesh = mesh; // test
+                // Debug.Log(Skirt + "     - materials");
+                // Debug.Log(smt.material + " -- -- --");
+                smt.material = SolidInfill;
+                // Debug.Log(smt.material + " -- -- --");
+                smt.rotation = new Vector3(0.0f, 0.0f, 0.0f);
+                smt.scale = new Vector3(0.19f * scale, 0.2f * scale, 0.4f * scale);
+
+                 if (visibleLayers.value >= (actualZheight * scale))
+                {
+                    meshtest.SetActive(true);
+                    go.SetActive(true);
+
+                }
+                else
+                {
+                    meshtest.SetActive(false);
+                    go.SetActive(false);
+
+                }
+
+                string[] before = actualSelectedGcode[(i - 1)].Split(' ');
+                float xx;
+                float yy;
+                if (before[1].StartsWith("F"))
+                {
+                    xx = float.Parse(before[2].Replace('.', ',').Substring(1));
+                    yy = float.Parse(before[3].Replace('.', ',').Substring(1));
+                }
+                else
+                {
+                    xx = float.Parse(before[1].Replace('.', ',').Substring(1));
+                    yy = float.Parse(before[2].Replace('.', ',').Substring(1));
+                }
+
+                if (debugPrints)
+                {
+                    Debug.Log("X :" + xx + "   Y: " + yy);
+                }
+
+                spline.AddNode(new SplineNode(new Vector3(xx * scale, (actualZheight - (actualLayerHeight / 2)) * scale, yy * scale), new Vector3(xx * scale - 0.000001f, (actualZheight - (actualLayerHeight / 2)) * scale, yy * scale - 0.000001f)));
+                // spline.AddNode(new SplineNode(new Vector3(x * scale, (actualZheight - (actualLayerHeight / 2)) * scale, y * scale), new Vector3(x * scale - 0.000001f, (actualZheight - (actualLayerHeight / 2)) * scale, y * scale - 0.000001f)));
+
+                if (debugPrints)
+                {
+                    Debug.Log("Aktuelle Zeile : " + actualSelectedGcode[i] + "  " + i);
+                }
+
+                int n = 1;
+                while ((i + n) < actualSelectedGcode.Length)
+                {
+                    if (actualSelectedGcode[i + n].StartsWith(";LAYER")) { break; }
+                    if (actualSelectedGcode[i + n].StartsWith(";End GCode")) { break; }
+                    if (actualSelectedGcode[i + n].StartsWith(";TYPE"))
+                    {
+                        if (debugPrints)
+                        {
+                            Debug.Log("I: " + i + " n: " + n + "Aktuelle Zeile : " + i + "   " + actualSelectedGcode[i]);
+                        }
+
+                        break;
+                    }
+                    if (actualSelectedGcode[i + n].StartsWith("G1")) // extrusion moves
+                    {
+                        if (debugPrints)
+                        {
+                            Debug.Log("G1 ------------------------- ");
+                        }
+
+
+                        float posX;
+                        float posY;
+
+                        string[] cords = actualSelectedGcode[i + n].Split(' ');
+
+
+                        if (cords[1].StartsWith("F"))
+                        {
+                            posX = float.Parse(cords[2].Replace('.', ',').Substring(1));
+                            posY = float.Parse(cords[3].Replace('.', ',').Substring(1));
+                        }
+                        else
+                        {
+                            posX = float.Parse(cords[1].Replace('.', ',').Substring(1));
+                            posY = float.Parse(cords[2].Replace('.', ',').Substring(1));
+                        }
+                        spline.AddNode(new SplineNode(new Vector3(posX * scale, (actualZheight - (actualLayerHeight / 2)) * scale, posY * scale), new Vector3(posX * scale - 0.000001f, (actualZheight - (actualLayerHeight / 2)) * scale, posY * scale - 0.000001f)));
+                    }
+                    n++;
+                }
+            }
+
+
+
+            // -----------------------------------------------
+
+            if (actualSelectedGcode[i].StartsWith(";TYPE:FILL"))
+            {
+                GameObject meshtest = new GameObject();
+                meshtest.tag = "extrusion";
+                meshtest.name = actualSelectedGcode[i];
+
+                meshtest.AddComponent<Spline>();
+                meshtest.AddComponent<SplineMeshTiling>();
+
+
+                Spline spline = meshtest.GetComponent<Spline>();
+                SplineMeshTiling smt = meshtest.GetComponent<SplineMeshTiling>();
+
+                spline.tag = "extrusion";
+                smt.tag = "extrusion";
+
+                smt.updateInPlayMode = true;
+                smt.curveSpace = true;
+
+                go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                go.name = "Filament: " + actualSelectedGcode[i];
+                go.tag = "extrusion";
+
+                Mesh mesh = go.GetComponent<MeshFilter>().sharedMesh;
+                smt.mesh = mesh; // test
+                // Debug.Log(Skirt + "     - materials");
+                // Debug.Log(smt.material + " -- -- --");
+                smt.material = Infill;
+                // Debug.Log(smt.material + " -- -- --");
+                smt.rotation = new Vector3(0.0f, 0.0f, 0.0f);
+                smt.scale = new Vector3(0.19f * scale, 0.2f * scale, 0.4f * scale);
+
+                 if (visibleLayers.value >= (actualZheight * scale))
+                {
+                    meshtest.SetActive(true);
+                    go.SetActive(true);
+
+                }
+                else
+                {
+                    meshtest.SetActive(false);
+                    go.SetActive(false);
+
+                }
+
+                string[] before = actualSelectedGcode[(i - 1)].Split(' ');
+                float xx;
+                float yy;
+                if (before[1].StartsWith("F"))
+                {
+                    xx = float.Parse(before[2].Replace('.', ',').Substring(1));
+                    yy = float.Parse(before[3].Replace('.', ',').Substring(1));
+                }
+                else
+                {
+                    xx = float.Parse(before[1].Replace('.', ',').Substring(1));
+                    yy = float.Parse(before[2].Replace('.', ',').Substring(1));
+                }
+
+                if (debugPrints)
+                {
+                    Debug.Log("X :" + xx + "   Y: " + yy);
+                }
+
+                spline.AddNode(new SplineNode(new Vector3(xx * scale, (actualZheight - (actualLayerHeight / 2)) * scale, yy * scale), new Vector3(xx * scale - 0.000001f, (actualZheight - (actualLayerHeight / 2)) * scale, yy * scale - 0.000001f)));
+                // spline.AddNode(new SplineNode(new Vector3(x * scale, (actualZheight - (actualLayerHeight / 2)) * scale, y * scale), new Vector3(x * scale - 0.000001f, (actualZheight - (actualLayerHeight / 2)) * scale, y * scale - 0.000001f)));
+
+                if (debugPrints)
+                {
+                    Debug.Log("Aktuelle Zeile : " + actualSelectedGcode[i] + "  " + i);
+                }
+
+                int n = 1;
+                while ((i + n) < actualSelectedGcode.Length)
+                {
+                    if (actualSelectedGcode[i + n].StartsWith(";LAYER")) { break; }
+                    if (actualSelectedGcode[i + n].StartsWith(";End GCode")) { break; }
+                    if (actualSelectedGcode[i + n].StartsWith(";TYPE"))
+                    {
+                        if (debugPrints)
+                        {
+                            Debug.Log("I: " + i + " n: " + n + "Aktuelle Zeile : " + i + "   " + actualSelectedGcode[i]);
+                        }
+
+                        break;
+                    }
+                    if (actualSelectedGcode[i + n].StartsWith("G1")) // extrusion moves
+                    {
+                        if (debugPrints)
+                        {
+                            Debug.Log("G1 ------------------------- ");
+                        }
+
+                        if (actualSelectedGcode[i + n - 1].StartsWith(";"))
+                        {
+                            Debug.Log("G1 -------first in infill ------------------ ");
+                        }
+                        else
+                        {
+
+                            string[] BeforeCords = actualSelectedGcode[i + n - 1].Split(' ');
+                            float beforeX;
+                            float beforeY;
+
+                            float posX;
+                            float posY;
+
+                            string[] cords = actualSelectedGcode[i + n].Split(' ');
+
+
+
+                            if (BeforeCords[1].StartsWith("F"))
+                            {
+                                beforeX = float.Parse(BeforeCords[2].Replace('.', ',').Substring(1));
+                                beforeY = float.Parse(BeforeCords[3].Replace('.', ',').Substring(1));
+                            }
+                            else
+                            {
+                                beforeX = float.Parse(BeforeCords[1].Replace('.', ',').Substring(1));
+                                beforeY = float.Parse(BeforeCords[2].Replace('.', ',').Substring(1));
+                            }
+
+
+                            if (cords[1].StartsWith("F"))
+                            {
+                                posX = float.Parse(cords[2].Replace('.', ',').Substring(1));
+                                posY = float.Parse(cords[3].Replace('.', ',').Substring(1));
+                            }
+                            else
+                            {
+                                posX = float.Parse(cords[1].Replace('.', ',').Substring(1));
+                                posY = float.Parse(cords[2].Replace('.', ',').Substring(1));
+                            }
+                            spline.AddNode(new SplineNode(new Vector3(beforeX * scale, (actualZheight - (actualLayerHeight / 2)) * scale, beforeY * scale), new Vector3(beforeX * scale - 0.000001f, (actualZheight - (actualLayerHeight / 2)) * scale, beforeY * scale - 0.000001f)));
+                            spline.AddNode(new SplineNode(new Vector3(posX * scale, (actualZheight - (actualLayerHeight / 2)) * scale, posY * scale), new Vector3(posX * scale - 0.000001f, (actualZheight - (actualLayerHeight / 2)) * scale, posY * scale - 0.000001f)));
+
+
+                        }
+                    }
+                    n++;
+                }
+            }
+
+
+
+
+
+
+
+
+
+
+
+
+
         }
-
-        System.IO.File.WriteAllText("clean.txt", adebugtext);
-        // Debug.Log("Parse test: "+ float.Parse(parsedGcode[10][1]) );
-
-        // create_mesh();
-
-        // Vector3 two = new Vector3(0.0f, 0.0f, 0.0f);
-        // Vector3 eins = new Vector3(100.0f, 100.0f, 100.0f);
-        // create_segment(eins, two);
-        // float.Parse()
-        testausgabe();
-
+        visibleLayers.maxValue = (actualZheight  * scale);
     }
 
-    void testausgabe()
-    {
-        Debug.Log("Testausgabe : " + parsedGcode.Length);
 
-        // Vector3 eins = new Vector3(20.0f, 0.3f/2, 20.0f);
-        // Vector3 two = new Vector3(200.0f, 0.3f/2, 40.0f);
-        // create_segment(eins, two);
-        create_mesh();
-
-        // for (int i = 0; i < parsedGcode.Length; i++)
-        // {
-        //     Debug.Log("Testausgabe : " + parsedGcode[i].Length);
-        //     // for (int s = 0; s < 1; s++)
-        //     // {
-        //     //     if (string.IsNullOrEmpty(parsedGcode[i][s])) { Debug.Log("WERTE leer: " + i + " : " + s  ); }
-        //     //     // Debug.Log("BEUG" + parsedGcode[i][s]);
-        //     // }           
-        // }
-
-    }
 
     void SetBuildplate(float x, float y)
     {
+        if (debugPrints)
+        {
+            Debug.Log("setting Buildplate");
+        }
         if (GameObject.Find("loadGcode").GetComponent<Dropdown>().value != 0)
         {
-            GameObject.Find("buildplate").transform.position = new Vector3(x / 2, -0.5f, y / 2);
-            GameObject.Find("buildplate").transform.localScale = new Vector3(x, 1, y);
-            GameObject.Find("Main Camera").transform.position = new Vector3(x / 2, 200, -200);
-
-            // Transform bp = GameObject.Find("buildplate").transform;
-            // // GameObject.Find("MainCamera").transform.LookAt(bp);
-        }
-        // else
-        // {
-        //     GameObject.Find("buildplate").transform.position = new Vector3(1 / 2 / 1000, -1, 1 / 2 / 1000);
-        //     GameObject.Find("buildplate").transform.localScale = new Vector3(1 / 1000, 1, 1 / 1000);
-        //     GameObject.Find("Main Camera").transform.position = new Vector3(1 / 2 / 1000, 200, -200);
-        // }
-    }
-
-    void create_segment(Vector3 p1, Vector3 p2, float extrusionWidth, float extrusionHeight)
-    {
-        // Debug.Log("P1 :" + p1.x + " " + p1.y + " " + p1.z);
-        // Debug.Log("P2 :" + p2.x + " " + p2.y + " " + p2.z);
-        Vector3 direction = p2 - p1;
-        Vector3 pos = Vector3.Lerp(p2, p1, (float)0.5);
-        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-        Debug.Log(angle);
-        // float angle1 = Vector3.Angle(p2, p1);
-        // Debug.Log("position " + pos + "Angle " + angle);
-        // Vector3 zero = new Vector3(0, 0, 0);
-        GameObject segObj = (GameObject)Instantiate(segment);
-        segObj.tag="clone";
-        segObj.transform.localRotation = Quaternion.Euler(direction.y * (-0.5f), direction.y, +0);
-        float laenge = (Vector3.Distance(p1, p2));
-        // segObj.transform.localRotation = Quaternion.Euler(+0, angle1*100, +0);
-        // laenge = laenge + 0.04f;
-        segObj.transform.localScale = new Vector3(extrusionHeight, ((laenge / 2) + 0.05f), extrusionWidth);
-
-
-
-        // new Vector3(direction.y*(-0.5f), direction.y , +0);
-        // segObj.transform.localRotation = new Vector3(direction.y*(-0.5f), direction.y , +0);
-        segObj.transform.position = pos;
-        segObj.transform.up = p2 - p1;
-
-        segObj.transform.up = p2 - p1;
-
-
-
-
-
-        // Debug.Log("laenge segemet: " + laenge);
-
-        // segObj.transform.localScale = new Vector3(1,(1.0f*laenge/2f) , 1);
-
-        // segObj.transform.localRotation = Quaternion.Euler(+0, angle1*1000/4, +0);
-
-        // segObj.transform.position = zero;
-        // segObj.transform.position = pos;
-        // segObj.transform.up = p2 - p1;
-        // Debug.Log("pos.x :" + pos.x);
-        // Debug.Log("pos.y :" + pos.y);
-        // Debug.Log("pos.z :" + pos.z);
-        // Debug.Log("---- Distance : " + Vector3.Distance(p1,p2));
-
-
-        // segObj.transform.localScale.y = Vector3.Distance(p1,p2);
-        // segObj.transform.localScale = new Vector3(1.0f, Vector3.Distance(p1,p2), 1.0f);
-
-    }
-
-    void create_mesh()
-    {
-        for (int i = 1; i < countGlines() - 1; i++)
-        {
-            // Debug.Log(temp2);
-            if (parsedGcode[i][0].StartsWith("G0"))
-            {
-                Debug.Log("ignoring G0");
-            }
-            else
-            {
-
-                Vector3 temp1 = new Vector3(float.Parse(parsedGcode[i - 1][1]),
-             // 0.3f,
-             float.Parse(parsedGcode[i - 1][3]),
-             float.Parse(parsedGcode[i - 1][2]));
-                // Debug.Log(temp1);
-                Vector3 temp2 = new Vector3(float.Parse(parsedGcode[i][1]),
-                // 0.3f,
-                float.Parse(parsedGcode[i][3]),
-                float.Parse(parsedGcode[i][2]));
-                create_segment(temp2, temp1, 0.45f, 0.45f);
-                // create_segment(temp2, temp1, 0.45f, actualLayerHeight);
-
-                // actualLayerHeight);
-            }
+            GameObject.Find("buildplate").transform.position = new Vector3(x * scale / 2, -0.5f * scale, y * scale / 2);
+            GameObject.Find("buildplate").transform.localScale = new Vector3(x * scale, 1 * scale, y * scale);
+            GameObject.Find("Main Camera").transform.position = new Vector3(x * scale / 2, 200 * scale, -200 * scale);
         }
     }
+
 }
