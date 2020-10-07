@@ -1,11 +1,11 @@
 # GCODEview
 ----
 
-GCODEview ist ein Program mit dem sich GCODE im Browser grafisch darstellen lässt. 
+GCODEview ist ein Program mit dem sich GCODE grafisch darstellen lässt. 
 
-Der Werkzeugpfad lässt sich Schicht- oder Befehlsweise durchlaufen oder automatisch gesteuert durch außen durch z.B.  Octoprint. 
+Der Werkzeugpfad lässt sich Schichtweise durchlaufen.
 
 Die einzelnen Features werden dabei unterschiedlich koloriert dargestellt. 
 
-Aktueller Stand der GUI zur GCODE Auswahl
+Aktueller Stand der GUI.
 ![GUI](/Documentation/pictures/dropdown.png)
