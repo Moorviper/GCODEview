@@ -61,9 +61,24 @@ public class LoadGCODE : MonoBehaviour
     Material SolidInfill;
     Material Infill;
 
+    GameObject camera;
+    Vector3 savedCamAngles;
+    Quaternion savedCamRotation;
+
 
     void Start()
     {
+
+        camera = GameObject.Find("Main Camera");
+        
+        savedCamAngles =  camera.transform.eulerAngles;
+       
+        savedCamRotation =  camera.transform.rotation;
+
+        
+
+
+
         Skirt = Resources.Load<Material>("Skirt");
         OuterShell = Resources.Load<Material>("OuterShell");
         InnerShell = Resources.Load<Material>("InnerShell");
@@ -102,7 +117,6 @@ public class LoadGCODE : MonoBehaviour
         {
             Debug.Log("Visible Layers :" + visibleLayers.value);
         }
-        
         ParseGcode();
     }
 
@@ -181,6 +195,8 @@ public class LoadGCODE : MonoBehaviour
             // Destroy(go);
             GameObject.Find("buildplate").transform.position = new Vector3(1 / 2, -1, 1 / 2);
             GameObject.Find("buildplate").transform.localScale = new Vector3(1, 1, 1);
+            GameObject.Find("Main Camera").transform.eulerAngles = savedCamAngles;
+            GameObject.Find("Main Camera").transform.rotation = savedCamRotation;
             GameObject.Find("Main Camera").transform.position = new Vector3(1 / 2, 200, -200);
             segment.transform.localScale = new Vector3(0.2f, 1, 0.45f);
         }
@@ -302,7 +318,7 @@ public class LoadGCODE : MonoBehaviour
                 meshtest.AddComponent<Spline>();
                 meshtest.AddComponent<SplineMeshTiling>();
 
-               
+
 
 
 
@@ -326,7 +342,7 @@ public class LoadGCODE : MonoBehaviour
                 smt.rotation = new Vector3(0.0f, 0.0f, 0.0f);
                 smt.scale = new Vector3(0.2f * scale, 0.2f * scale, 0.45f * scale);
 
-                 if (visibleLayers.value >= (actualZheight * scale))
+                if (visibleLayers.value >= (actualZheight * scale))
                 {
                     meshtest.SetActive(true);
                     go.SetActive(true);
@@ -436,7 +452,7 @@ public class LoadGCODE : MonoBehaviour
                 smt.rotation = new Vector3(0.0f, 0.0f, 0.0f);
                 smt.scale = new Vector3(0.19f * scale, 0.2f * scale, 0.4f * scale);
 
-                 if (visibleLayers.value >= (actualZheight * scale))
+                if (visibleLayers.value >= (actualZheight * scale))
                 {
                     meshtest.SetActive(true);
                     go.SetActive(true);
@@ -553,7 +569,7 @@ public class LoadGCODE : MonoBehaviour
                 smt.rotation = new Vector3(0.0f, 0.0f, 0.0f);
                 smt.scale = new Vector3(0.19f * scale, 0.2f * scale, 0.4f * scale);
 
-                 if (visibleLayers.value >= (actualZheight * scale))
+                if (visibleLayers.value >= (actualZheight * scale))
                 {
                     meshtest.SetActive(true);
                     go.SetActive(true);
@@ -671,7 +687,7 @@ public class LoadGCODE : MonoBehaviour
                 smt.rotation = new Vector3(0.0f, 0.0f, 0.0f);
                 smt.scale = new Vector3(0.19f * scale, 0.2f * scale, 0.4f * scale);
 
-                 if (visibleLayers.value >= (actualZheight * scale))
+                if (visibleLayers.value >= (actualZheight * scale))
                 {
                     meshtest.SetActive(true);
                     go.SetActive(true);
@@ -791,7 +807,7 @@ public class LoadGCODE : MonoBehaviour
                 smt.rotation = new Vector3(0.0f, 0.0f, 0.0f);
                 smt.scale = new Vector3(0.19f * scale, 0.2f * scale, 0.4f * scale);
 
-                 if (visibleLayers.value >= (actualZheight * scale))
+                if (visibleLayers.value >= (actualZheight * scale))
                 {
                     meshtest.SetActive(true);
                     go.SetActive(true);
@@ -915,7 +931,8 @@ public class LoadGCODE : MonoBehaviour
 
 
         }
-        visibleLayers.maxValue = (actualZheight  * scale);
+        visibleLayers.maxValue = (actualZheight * scale);
+        
     }
 
 
@@ -930,6 +947,8 @@ public class LoadGCODE : MonoBehaviour
         {
             GameObject.Find("buildplate").transform.position = new Vector3(x * scale / 2, -0.5f * scale, y * scale / 2);
             GameObject.Find("buildplate").transform.localScale = new Vector3(x * scale, 1 * scale, y * scale);
+            // GameObject.Find("Main Camera").transform.eulerAngles = savedCamAngles;
+            // GameObject.Find("Main Camera").transform.rotation = savedCamRotation;
             GameObject.Find("Main Camera").transform.position = new Vector3(x * scale / 2, 200 * scale, -200 * scale);
         }
     }
